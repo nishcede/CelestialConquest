@@ -1,11 +1,16 @@
 using UnityEngine;
+using TMPro;
 using UnityEngine.InputSystem;
 
 public class SolarSpire : MonoBehaviour
 {
+    [Header("VFX References")]
+    public GameObject floatingTextPrefab; // Drag your prefab here
+
+    public Transform textSpawnPoint;      // Drag a child object of the Canvas here
     [Header("Harvest Settings")]
     public int amritaPerClick = 20;
-    
+
     [Header("Passive Settings")]
     public int passiveAmount = 5;      // How much gold it makes automatically
     public float interval = 3.0f;     // Every 3 seconds
@@ -15,6 +20,7 @@ public class SolarSpire : MonoBehaviour
 
     public TMPro.TextMeshProUGUI levelText;
     public TMPro.TextMeshProUGUI amritaRequired;
+    public TMPro.TextMeshProUGUI passiveText; // The slot for your passive income UI
 
     private Vector3 baseScale = Vector3.one;
     private Vector3 initialScale = Vector3.one; // The "Day 1" size
@@ -28,16 +34,18 @@ public class SolarSpire : MonoBehaviour
 
     void Start()
     {
-       Application.targetFrameRate = 30;
+        Application.targetFrameRate = 30;
     }
 
-void Update()
+    void Update()
     {
         // 1. Passive Income Timer (Keep as is)
-        timer += Time.deltaTime; 
+        timer += Time.deltaTime;
+        // Inside Update() Section 1
         if (timer >= interval)
         {
             GameManager.instance.AddAmrita(passiveAmount);
+            SpawnFloatingText(); // Trigger the visual effect
             timer = 0;
         }
 
@@ -52,7 +60,7 @@ void Update()
         }
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
-            transform.localScale = baseScale; 
+            transform.localScale = baseScale;
         }
 
         // 3. THE MYSTICAL SPIN & BOB (Day 2 Final Touch)
@@ -67,76 +75,97 @@ void Update()
         // 4. UI FOLLOW LOGIC (Keep as is)
         if (worldCanvas != null)
         {
-            float heightOfSpire = transform.localScale.y * 2.0f; 
+            float heightOfSpire = transform.localScale.y * 2.0f;
             float targetY = transform.position.y + heightOfSpire + 0.5f;
             worldCanvas.transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
             worldCanvas.transform.rotation = Quaternion.Euler(30, 0, 0);
         }
+        if (passiveText != null)
+            passiveText.text = "+" + passiveAmount + " every " + interval + "s";
     }
 
-   void OnSpireClicked()
+    void OnSpireClicked()
     {
         GameManager.instance.AddAmrita(amritaPerClick);
-        
+
         // Calculate 10% of the ORIGINAL size
-        Vector3 bonusSize = initialScale * 0.1f; 
-        
+        Vector3 bonusSize = initialScale * 0.1f;
+
         // Add that 10% boost to the CURRENT level scale
         transform.localScale = baseScale + bonusSize;
-        
+
         AudioSource audio = GetComponent<AudioSource>();
         if (audio != null) audio.Play();
     }
 
 
     // It MUST start with the word 'public'
-public void UpgradeBuilding()
-{
-    // 50 is the starting price, 1.15f is the multiplier (15% increase)
-    // 1.10f (Easy): The game feels fast and breezy. Players level up constantly.
-    // 1.15f (Standard): This is the "Sweet Spot" used by games like AdVenture Capitalist.
-    // 1.20f (Hard): The costs skyrocket very quickly. The player will hit a "wall" sooner and have to save up their Amrita.
-    int cost = (int)(50 * Mathf.Pow(1.2f, level));//The number 1.15f is your "Difficulty Dial".
-    int nextCost = (int)(50 * Mathf.Pow(1.2f, level+1));//This is to get the Amrita Required to upgrade the building next
-
-
-    if (GameManager.instance.SpendAmrita(cost))
+    public void UpgradeBuilding()
     {
-        level++;
-       amritaPerClick = (int)(amritaPerClick * 1.2f); // 20% more per click each level
-       passiveAmount = (int)(passiveAmount * 1.1f);   // 10% more passive each level
+        // 50 is the starting price, 1.15f is the multiplier (15% increase)
+        // 1.10f (Easy): The game feels fast and breezy. Players level up constantly.
+        // 1.15f (Standard): This is the "Sweet Spot" used by games like AdVenture Capitalist.
+        // 1.20f (Hard): The costs skyrocket very quickly. The player will hit a "wall" sooner and have to save up their Amrita.
+        int cost = (int)(50 * Mathf.Pow(1.2f, level));//The number 1.15f is your "Difficulty Dial".
+        int nextCost = (int)(50 * Mathf.Pow(1.2f, level + 1));//This is to get the Amrita Required to upgrade the building next
 
-         
-        // Calculate 10% of the ORIGINAL size
-        // Vector3 bonusSize = initialScale * 0.1f; 
-        
-        // // Add that 10% boost to the CURRENT level scale
-        // transform.localScale = baseScale + bonusSize;
-        // baseScale = transform.localScale; // Update the base scale to the new size
-        if (transform.localScale.y < 2.5f) // Only grow if height is less than 5
+
+        if (GameManager.instance.SpendAmrita(cost))
         {
-            Vector3 bonusSize = initialScale * 0.1f; 
-            transform.localScale = baseScale + bonusSize;
-            baseScale = transform.localScale;
+            level++;
+            amritaPerClick = (int)(amritaPerClick * 1.2f); // 20% more per click each level
+            passiveAmount = (int)(passiveAmount * 1.1f);   // 10% more passive each level
+
+
+            // Calculate 10% of the ORIGINAL size
+            // Vector3 bonusSize = initialScale * 0.1f; 
+
+            // // Add that 10% boost to the CURRENT level scale
+            // transform.localScale = baseScale + bonusSize;
+            // baseScale = transform.localScale; // Update the base scale to the new size
+            if (transform.localScale.y < 2.5f) // Only grow if height is less than 5
+            {
+                Vector3 bonusSize = initialScale * 0.1f;
+                transform.localScale = baseScale + bonusSize;
+                baseScale = transform.localScale;
+            }
+
+
+            if (levelText != null) levelText.text = "Lvl " + level;
+
+            if (amritaRequired != null) amritaRequired.text = "Upgrade Spire (" + nextCost + " Amrita)";
+
+
+            AudioSource audio = GetComponent<AudioSource>();
+            if (audio != null) audio.Play();
+
+            if (level >= 5)
+            {
+                // Make it spin 3x faster
+                rotationSpeed = 90f;
+
+                // Change color to a 'Celestial Gold'
+                GetComponent<Renderer>().material.color = new Color(1f, 0.84f, 0f);
+            }
         }
 
-
-        if (levelText != null) levelText.text = "Lvl " + level;
-        
-        if(amritaRequired != null) amritaRequired.text = "Upgrade Spire ("+ nextCost +" Amrita)";
-
-        
-        AudioSource audio = GetComponent<AudioSource>();
-        if (audio != null) audio.Play();
-
-        if (level >= 5)
+    }
+    void SpawnFloatingText()
+    {
+        if (floatingTextPrefab != null && worldCanvas != null)
         {
-            // Make it spin 3x faster
-            rotationSpeed = 90f; 
-            
-            // Change color to a 'Celestial Gold'
-            GetComponent<Renderer>().material.color = new Color(1f, 0.84f, 0f); 
+            GameObject textObj = Instantiate(floatingTextPrefab, worldCanvas.transform);
+
+            // CHANGE 1: Set localScale to 1. 
+            // Sometimes spawning UI objects inside a scaled Canvas makes them tiny or giant.
+            textObj.transform.localScale = Vector3.one;
+
+            textObj.transform.localPosition = new Vector3(80, 50, 0);
+            textObj.transform.localRotation = Quaternion.identity;
+
+            // CHANGE 2: Add a check for the component to prevent a "Null Reference" error.
+            var tmp = textObj.GetComponent<TextMeshProUGUI>();
+            if (tmp != null) tmp.text = "+" + passiveAmount;
         }
     }
-}
 }
